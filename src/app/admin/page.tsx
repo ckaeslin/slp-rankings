@@ -1,16 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { SLPStandings } from '@/lib/types'
 import { useLanguage } from '@/hooks/useLanguage'
 import { t } from '@/lib/translations/admin'
 
-// Mock session for local testing - set to null to show login form
-const mockUser = { email: 'admin@test.ch', role: 'super_admin' }
-
 export default function AdminPage() {
   const lang = useLanguage()
+  const router = useRouter()
   const [standings, setStandings] = useState<SLPStandings | null>(null)
 
   // Get locale for date formatting
@@ -23,15 +22,9 @@ export default function AdminPage() {
       .catch(console.error)
   }, [])
 
-  if (!mockUser) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">{t(lang, 'notLoggedIn')}</h1>
-          <p className="text-gray-400">{t(lang, 'pleaseLogin')}</p>
-        </div>
-      </div>
-    )
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
   }
 
   const stats = standings ? {
@@ -42,11 +35,17 @@ export default function AdminPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{t(lang, 'dashboard')}</h1>
-        <p className="text-gray-400">
-          {t(lang, 'welcomeBack')}, <span className="text-primary">{mockUser.email}</span>
-        </p>
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">{t(lang, 'dashboard')}</h1>
+          <p className="text-gray-400">{t(lang, 'welcomeBack')}</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg transition-colors"
+        >
+          Logout
+        </button>
       </div>
 
       {/* Stats */}
