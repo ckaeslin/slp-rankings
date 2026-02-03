@@ -18,6 +18,7 @@ export async function PUT(
         lastName: body.lastName,
         gender: body.gender,
         clubId: body.clubId || null,
+        imageUrl: body.imageUrl,
         updatedAt: new Date(),
       })
       .where(eq(members.id, id))
