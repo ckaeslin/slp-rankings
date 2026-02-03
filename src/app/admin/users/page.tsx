@@ -27,16 +27,15 @@ export default function UsersPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    // Get current user from cookie
-    const cookie = document.cookie.split('; ').find(c => c.startsWith('admin-session='))
-    if (cookie) {
-      try {
-        const data = JSON.parse(atob(cookie.split('=')[1]))
-        setCurrentUser(data)
-      } catch {
-        // Invalid session
-      }
-    }
+    // Get current user from API
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          setCurrentUser(data.user)
+        }
+      })
+      .catch(console.error)
 
     // Fetch users
     fetch('/api/users')
