@@ -24,8 +24,8 @@ function parseSession(cookie: string | undefined): SessionData | null {
 }
 
 export function middleware(request: NextRequest) {
-  // Block seed endpoint in production
-  if (request.nextUrl.pathname === '/api/seed') {
+  // Block seed endpoint in production only
+  if (request.nextUrl.pathname === '/api/seed' && process.env.NODE_ENV === 'production') {
     return new NextResponse('Not Found', { status: 404 })
   }
 
