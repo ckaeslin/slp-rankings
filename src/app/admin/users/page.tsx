@@ -28,7 +28,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     // Get current user from API
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.user) {
@@ -38,7 +38,7 @@ export default function UsersPage() {
       .catch(console.error)
 
     // Fetch users
-    fetch('/api/users')
+    fetch('/api/users', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -77,6 +77,7 @@ export default function UsersPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: newUserEmail, role: newUserRole }),
+      credentials: 'include',
     })
 
     const data = await res.json()
@@ -94,7 +95,7 @@ export default function UsersPage() {
   const handleDeleteUser = async (id: string) => {
     if (!confirm('Benutzer wirklich löschen?')) return
 
-    const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/users/${id}`, { method: 'DELETE', credentials: 'include' })
 
     if (res.ok) {
       setUsers(users.filter(u => u.id !== id))
@@ -108,6 +109,7 @@ export default function UsersPage() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ resetPassword: true }),
+      credentials: 'include',
     })
 
     const data = await res.json()
