@@ -5,13 +5,14 @@ import { eq } from 'drizzle-orm'
 // GET single tournament
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const tournament = await db
       .select()
       .from(tournaments)
-      .where(eq(tournaments.id, params.id))
+      .where(eq(tournaments.id, id))
       .limit(1)
 
     if (tournament.length === 0) {
@@ -34,9 +35,10 @@ export async function GET(
 // PUT update tournament
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
 
     const updated = await db
@@ -52,7 +54,7 @@ export async function PUT(
         participantCount: body.participantCount,
         updatedAt: new Date(),
       })
-      .where(eq(tournaments.id, params.id))
+      .where(eq(tournaments.id, id))
       .returning()
 
     if (updated.length === 0) {
@@ -75,12 +77,13 @@ export async function PUT(
 // DELETE tournament
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const deleted = await db
       .delete(tournaments)
-      .where(eq(tournaments.id, params.id))
+      .where(eq(tournaments.id, id))
       .returning()
 
     if (deleted.length === 0) {

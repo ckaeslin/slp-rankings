@@ -5,9 +5,10 @@ import { eq } from 'drizzle-orm'
 // PUT update member
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
 
     const updated = await db
@@ -19,7 +20,7 @@ export async function PUT(
         clubId: body.clubId || null,
         updatedAt: new Date(),
       })
-      .where(eq(members.id, params.id))
+      .where(eq(members.id, id))
       .returning()
 
     if (updated.length === 0) {
@@ -42,12 +43,13 @@ export async function PUT(
 // DELETE member
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const deleted = await db
       .delete(members)
-      .where(eq(members.id, params.id))
+      .where(eq(members.id, id))
       .returning()
 
     if (deleted.length === 0) {
