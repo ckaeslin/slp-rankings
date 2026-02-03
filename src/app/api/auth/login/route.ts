@@ -1,18 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db, users } from '@/db'
+import { eq } from 'drizzle-orm'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
-  const { password } = await request.json()
+  try {
+    const { email, password } = await request.json()
 
-  if (password === process.env.ADMIN_SECRET) {
-    const response = NextResponse.json({ success: true })
-    response.cookies.set('admin-auth', process.env.ADMIN_SECRET!, {
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
+    }
+
+    // Find user by email
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, email.toLowerCase()),
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash)
+    if (!passwordMatch) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+
+    // Generate session token
+    const sessionToken = crypto.randomBytes(32).toString('hex')
+
+    // Create session data (encode user info in base64)
+    const sessionData = Buffer.from(JSON.stringify({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      token: sessionToken,
+      exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 1 week
+    })).toString('base64')
+
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        email: user.email,
+        role: user.role,
+      }
+    })
+
+    response.cookies.set('admin-session', sessionData, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 1 week
     })
-    return response
-  }
 
-  return NextResponse.json({ error: 'Invalid password' }, { status: 401 })
+    return response
+  } catch (error) {
+    console.error('Login error:', error)
+    return NextResponse.json({ error: 'Login failed' }, { status: 500 })
+  }
 }

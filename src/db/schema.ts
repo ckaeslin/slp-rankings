@@ -6,6 +6,17 @@ export const armEnum = pgEnum('arm', ['left', 'right'])
 export const tournamentTypeEnum = pgEnum('tournament_type', ['national', 'international', 'em', 'wm'])
 export const tournamentStatusEnum = pgEnum('tournament_status', ['upcoming', 'completed'])
 export const categoryTypeEnum = pgEnum('category_type', ['senior', 'junior', 'master', 'amateur'])
+export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin'])
+
+// Users (for admin authentication)
+export const users = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  role: userRoleEnum('role').notNull().default('admin'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
 
 // Clubs
 export const clubs = pgTable('clubs', {
@@ -104,3 +115,6 @@ export type NewTournamentResult = typeof tournamentResults.$inferInsert
 
 export type SLPRanking = typeof slpRankings.$inferSelect
 export type NewSLPRanking = typeof slpRankings.$inferInsert
+
+export type User = typeof users.$inferSelect
+export type NewUser = typeof users.$inferInsert

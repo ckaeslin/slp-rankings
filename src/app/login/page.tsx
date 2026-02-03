@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,13 +16,14 @@ export default function LoginPage() {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ email, password }),
     })
 
     if (res.ok) {
       window.location.href = '/admin'
     } else {
-      setError('Falsches Passwort')
+      const data = await res.json()
+      setError(data.error || 'Login fehlgeschlagen')
     }
     setLoading(false)
   }
@@ -33,12 +35,23 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="E-Mail"
+              className="w-full px-4 py-3 bg-dark-700 border border-dark-500 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary"
+              autoFocus
+              required
+            />
+          </div>
+          <div>
+            <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Passwort"
               className="w-full px-4 py-3 bg-dark-700 border border-dark-500 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary"
-              autoFocus
+              required
             />
           </div>
           {error && <p className="text-red-400 text-sm">{error}</p>}

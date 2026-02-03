@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { db, clubs, members, tournaments, slpRankings } from '@/db'
+import { db, clubs, members, tournaments, slpRankings, users } from '@/db'
 import * as fs from 'fs'
 import * as path from 'path'
+import bcrypt from 'bcryptjs'
 
 interface SLPData {
   season: string
@@ -128,11 +129,32 @@ export async function POST() {
       },
     ])
 
+    // Create super admin user if ADMIN_EMAIL and ADMIN_PASSWORD are set
+    let adminCreated = false
+    const adminEmail = process.env.ADMIN_EMAIL
+    const adminPassword = process.env.ADMIN_PASSWORD
+
+    if (adminEmail && adminPassword) {
+      console.log('Creating super admin user...')
+      // Delete existing users first
+      await db.delete(users)
+
+      const passwordHash = await bcrypt.hash(adminPassword, 12)
+      await db.insert(users).values({
+        email: adminEmail,
+        passwordHash,
+        role: 'super_admin',
+      })
+      adminCreated = true
+      console.log(`   - Super admin created: ${adminEmail}`)
+    }
+
     console.log('✅ Database seeded successfully!')
     console.log(`   - ${clubNames.length} clubs`)
     console.log(`   - ${allAthletes.length} members`)
     console.log(`   - ${allAthletes.length} rankings`)
     console.log(`   - ${jsonData.tournaments.length + 2} tournaments`)
+    if (adminCreated) console.log(`   - 1 super admin user`)
 
     return NextResponse.json({
       success: true,
@@ -141,7 +163,8 @@ export async function POST() {
         clubs: clubNames.length,
         members: allAthletes.length,
         rankings: allAthletes.length,
-        tournaments: jsonData.tournaments.length + 2
+        tournaments: jsonData.tournaments.length + 2,
+        users: adminCreated ? 1 : 0
       }
     })
   } catch (error) {
