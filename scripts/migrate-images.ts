@@ -1,6 +1,6 @@
 /**
  * Migration script to upload existing athlete images to Vercel Blob
- * Run with: npx tsx scripts/migrate-images.ts
+ * Run with: node --env-file=.env --import tsx scripts/migrate-images.ts
  */
 
 import { put } from '@vercel/blob'
