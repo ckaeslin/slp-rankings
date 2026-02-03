@@ -21,27 +21,61 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
-    const memberId = formData.get('memberId') as string | null
+    const type = formData.get('type') as string | null // 'member', 'tournament-pdf', 'tournament-logo', 'tournament-poster'
+    const id = formData.get('id') as string | null // memberId or tournamentId
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
+    // Validate based on type
+    const isPdf = file.type === 'application/pdf'
+    const isImage = file.type.startsWith('image/')
+
+    if (type === 'tournament-pdf') {
+      if (!isPdf) {
+        return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 })
+      }
+      // Max 10MB for PDFs
+      if (file.size > 10 * 1024 * 1024) {
+        return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
+      }
+    } else {
+      if (!isImage) {
+        return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
+      }
+      // Max 2MB for images
+      if (file.size > 2 * 1024 * 1024) {
+        return NextResponse.json({ error: 'File too large (max 2MB)' }, { status: 400 })
+      }
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large (max 2MB)' }, { status: 400 })
-    }
+    // Generate filename based on type
+    const ext = file.name.split('.').pop() || (isPdf ? 'pdf' : 'jpg')
+    let filename: string
 
-    // Generate unique filename
-    const ext = file.name.split('.').pop() || 'jpg'
-    const filename = memberId
-      ? `members/${memberId}.${ext}`
-      : `members/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    switch (type) {
+      case 'tournament-pdf':
+        filename = id
+          ? `tournaments/${id}/results.pdf`
+          : `tournaments/${Date.now()}-results.pdf`
+        break
+      case 'tournament-logo':
+        filename = id
+          ? `tournaments/${id}/logo.${ext}`
+          : `tournaments/${Date.now()}-logo.${ext}`
+        break
+      case 'tournament-poster':
+        filename = id
+          ? `tournaments/${id}/poster.${ext}`
+          : `tournaments/${Date.now()}-poster.${ext}`
+        break
+      case 'member':
+      default:
+        filename = id
+          ? `members/${id}.${ext}`
+          : `members/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    }
 
     // Upload to Vercel Blob
     const blob = await put(filename, file, {

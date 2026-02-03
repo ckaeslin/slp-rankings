@@ -55,6 +55,7 @@ export const tournaments = pgTable('tournaments', {
   status: tournamentStatusEnum('status').notNull().default('upcoming'),
   logoUrl: text('logo_url'),
   posterUrl: text('poster_url'),
+  resultsUrl: text('results_url'), // PDF with tournament results
   participantCount: integer('participant_count'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
