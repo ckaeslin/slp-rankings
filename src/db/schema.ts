@@ -8,16 +8,6 @@ export const tournamentStatusEnum = pgEnum('tournament_status', ['upcoming', 'co
 export const categoryTypeEnum = pgEnum('category_type', ['senior', 'junior', 'master', 'amateur'])
 export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin'])
 
-// Users (for admin authentication)
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  role: userRoleEnum('role').notNull().default('admin'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
-
 // Clubs
 export const clubs = pgTable('clubs', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -26,6 +16,17 @@ export const clubs = pgTable('clubs', {
   location: varchar('location', { length: 255 }),
   logoUrl: text('logo_url'),
   presidentId: uuid('president_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Users (for admin authentication)
+export const users = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  role: userRoleEnum('role').notNull().default('admin'),
+  clubId: uuid('club_id').references(() => clubs.id), // null for super_admin, set for club admins
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

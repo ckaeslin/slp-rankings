@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       email: user.email,
       role: user.role,
+      clubId: user.clubId,
       token: sessionToken,
       exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 1 week
     })).toString('base64')
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
       user: {
         email: user.email,
         role: user.role,
+        clubId: user.clubId,
       }
     })
 

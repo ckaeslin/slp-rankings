@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
         userId: session.userId,
         email: session.email,
         role: session.role,
+        clubId: session.clubId,
       }
     })
   } catch {

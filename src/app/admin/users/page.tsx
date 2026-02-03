@@ -2,10 +2,16 @@
 
 import { useState, useEffect } from 'react'
 
+interface Club {
+  id: string
+  name: string
+}
+
 interface User {
   id: string
   email: string
   role: 'super_admin' | 'admin'
+  clubId: string | null
   createdAt: string
   generatedPassword?: string
 }
@@ -18,11 +24,13 @@ interface CurrentUser {
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
+  const [clubs, setClubs] = useState<Club[]>([])
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserRole, setNewUserRole] = useState<'admin' | 'super_admin'>('admin')
+  const [newUserClubId, setNewUserClubId] = useState('')
   const [createdUser, setCreatedUser] = useState<User | null>(null)
   const [error, setError] = useState('')
 
@@ -47,6 +55,16 @@ export default function UsersPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false))
+
+    // Fetch clubs for the dropdown
+    fetch('/api/clubs', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setClubs(data)
+        }
+      })
+      .catch(console.error)
   }, [])
 
   const isSuperAdmin = currentUser?.role === 'super_admin'
@@ -76,7 +94,11 @@ export default function UsersPage() {
     const res = await fetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: newUserEmail, role: newUserRole }),
+      body: JSON.stringify({
+        email: newUserEmail,
+        role: newUserRole,
+        clubId: newUserRole === 'admin' ? newUserClubId : null,
+      }),
       credentials: 'include',
     })
 
@@ -87,6 +109,7 @@ export default function UsersPage() {
       setUsers([...users, data])
       setNewUserEmail('')
       setNewUserRole('admin')
+      setNewUserClubId('')
     } else {
       setError(data.error || 'Fehler beim Erstellen')
     }
@@ -172,6 +195,7 @@ export default function UsersPage() {
             <tr className="text-left text-gray-400 text-sm">
               <th className="py-3 px-4">E-Mail</th>
               <th className="py-3 px-4">Rolle</th>
+              <th className="py-3 px-4">Verein</th>
               <th className="py-3 px-4">Erstellt</th>
               <th className="py-3 px-4">Aktionen</th>
             </tr>
@@ -193,6 +217,11 @@ export default function UsersPage() {
                   }`}>
                     {user.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                   </span>
+                </td>
+                <td className="py-3 px-4 text-gray-400">
+                  {user.clubId
+                    ? clubs.find(c => c.id === user.clubId)?.name || '–'
+                    : '–'}
                 </td>
                 <td className="py-3 px-4 text-gray-400">
                   {new Date(user.createdAt).toLocaleDateString('de-CH')}
@@ -282,6 +311,22 @@ export default function UsersPage() {
                         <option value="super_admin">Super Admin</option>
                       </select>
                     </div>
+                    {newUserRole === 'admin' && (
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Verein</label>
+                        <select
+                          value={newUserClubId}
+                          onChange={(e) => setNewUserClubId(e.target.value)}
+                          required
+                          className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary"
+                        >
+                          <option value="">Verein auswählen...</option>
+                          {clubs.map(club => (
+                            <option key={club.id} value={club.id}>{club.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                   {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
                   <p className="text-sm text-gray-500 mt-4">

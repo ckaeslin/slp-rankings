@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       id: true,
       email: true,
       role: true,
+      clubId: true,
       createdAt: true,
     },
   })
@@ -41,10 +42,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { email, role } = await request.json()
+    const { email, role, clubId } = await request.json()
 
     if (!email) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 })
+    }
+
+    // Admins must have a club assigned
+    if (role === 'admin' && !clubId) {
+      return NextResponse.json({ error: 'Club required for admin users' }, { status: 400 })
     }
 
     // Generate random password
@@ -55,10 +61,12 @@ export async function POST(request: NextRequest) {
       email: email.toLowerCase(),
       passwordHash,
       role: role || 'admin',
+      clubId: role === 'super_admin' ? null : clubId,
     }).returning({
       id: users.id,
       email: users.email,
       role: users.role,
+      clubId: users.clubId,
       createdAt: users.createdAt,
     })
 
