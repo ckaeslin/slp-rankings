@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { SLPStandings } from '@/lib/types'
 import { useLanguage } from '@/hooks/useLanguage'
@@ -9,7 +8,6 @@ import { t } from '@/lib/translations/admin'
 
 export default function AdminPage() {
   const lang = useLanguage()
-  const router = useRouter()
   const [standings, setStandings] = useState<SLPStandings | null>(null)
 
   // Get locale for date formatting
@@ -24,7 +22,7 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   const stats = standings ? {
