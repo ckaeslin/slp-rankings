@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Protect admin routes
+  // Block all admin routes
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    const authCookie = request.cookies.get('admin-auth')
+    return new NextResponse('Not Found', { status: 404 })
+  }
 
-    if (authCookie?.value !== process.env.ADMIN_SECRET) {
-      // Redirect to login page
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+  // Block seed endpoint
+  if (request.nextUrl.pathname === '/api/seed') {
+    return new NextResponse('Not Found', { status: 404 })
   }
 
   return NextResponse.next()
