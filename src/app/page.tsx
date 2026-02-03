@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useLanguage } from '@/hooks/useLanguage'
@@ -8,6 +9,14 @@ import { t as tc } from '@/lib/translations/common'
 
 export default function Home() {
   const lang = useLanguage()
+  const [stats, setStats] = useState({ clubs: 0, members: 0 })
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(console.error)
+  }, [])
 
   return (
     <div className="min-h-screen">
@@ -59,11 +68,11 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center p-6 rounded-xl bg-dark-700/50 border border-primary/20">
-              <div className="text-4xl font-bold text-primary mb-2">~10</div>
+              <div className="text-4xl font-bold text-primary mb-2">{stats.clubs || '–'}</div>
               <div className="text-gray-400">{t(lang, 'clubs')}</div>
             </div>
             <div className="text-center p-6 rounded-xl bg-dark-700/50 border border-primary/20">
-              <div className="text-4xl font-bold text-primary mb-2">~100</div>
+              <div className="text-4xl font-bold text-primary mb-2">{stats.members || '–'}</div>
               <div className="text-gray-400">{t(lang, 'members')}</div>
             </div>
             <div className="text-center p-6 rounded-xl bg-dark-700/50 border border-primary/20">
