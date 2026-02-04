@@ -39,7 +39,8 @@ export default function AdminLayout({
       .find(row => row.startsWith('admin-session='))
     if (cookie) {
       try {
-        const value = cookie.split('=')[1]
+        // Use substring to handle base64 values that contain '=' padding
+        const value = cookie.substring('admin-session='.length)
         const decoded = JSON.parse(atob(value))
         setSession(decoded)
       } catch {
