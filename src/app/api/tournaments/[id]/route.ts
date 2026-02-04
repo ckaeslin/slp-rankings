@@ -206,6 +206,9 @@ export async function PUT(
 
     // If categories are provided, save them to the database
     if (body.categories && Array.isArray(body.categories)) {
+      // Fetch all members for auto-linking
+      const allMembers = await db.select().from(members)
+
       // First, delete existing categories and results for this tournament
       const existingCategories = await db
         .select({ id: tournamentCategories.id })
@@ -241,11 +244,20 @@ export async function PUT(
           weightClass: cat.weightClass || null,
         }).returning()
 
-        // Insert placements/results
+        // Insert placements/results with auto-linking to members
         if (cat.placements && Array.isArray(cat.placements)) {
           for (const placement of cat.placements) {
+            // Try to match athlete name to a member
+            const athleteName = placement.name.toUpperCase().trim()
+            const matchedMember = allMembers.find(m => {
+              const fullName = `${m.firstName} ${m.lastName}`.toUpperCase().trim()
+              const reverseName = `${m.lastName} ${m.firstName}`.toUpperCase().trim()
+              return athleteName === fullName || athleteName === reverseName
+            })
+
             await db.insert(tournamentResults).values({
               categoryId: newCategory.id,
+              memberId: matchedMember?.id || null,
               athleteName: placement.name,
               country: placement.country || 'Switzerland',
               position: placement.position,
