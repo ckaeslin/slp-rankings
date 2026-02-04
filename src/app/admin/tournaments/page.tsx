@@ -95,11 +95,12 @@ export default function TournamentsPage() {
     const cookie = document.cookie
       .split('; ')
       .find(row => row.startsWith('admin-session='))
-      ?.split('=')[1]
 
     if (cookie) {
       try {
-        const decoded = JSON.parse(atob(cookie))
+        // Use substring to handle base64 values that contain '=' padding
+        const value = cookie.substring('admin-session='.length)
+        const decoded = JSON.parse(atob(value))
         setSession(decoded)
       } catch {
         console.error('Failed to parse session')
