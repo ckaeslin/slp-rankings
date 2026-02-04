@@ -87,6 +87,14 @@ export const tournamentResults = pgTable('tournament_results', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Tournament Organizers (junction table for clubs organizing tournaments)
+export const tournamentOrganizers = pgTable('tournament_organizers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tournamentId: uuid('tournament_id').references(() => tournaments.id, { onDelete: 'cascade' }).notNull(),
+  clubId: uuid('club_id').references(() => clubs.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // SLP Rankings (calculated standings per season)
 export const slpRankings = pgTable('slp_rankings', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -120,3 +128,6 @@ export type NewSLPRanking = typeof slpRankings.$inferInsert
 
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
+
+export type TournamentOrganizer = typeof tournamentOrganizers.$inferSelect
+export type NewTournamentOrganizer = typeof tournamentOrganizers.$inferInsert

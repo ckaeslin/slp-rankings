@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
+interface Organizer {
+  clubId: string
+  clubName: string | null
+  clubShortName: string | null
+}
+
 interface Tournament {
   id: string
   name: string
@@ -13,6 +19,13 @@ interface Tournament {
   participantCount?: number | null
   logoUrl?: string | null
   posterUrl?: string | null
+  organizers: Organizer[]
+}
+
+interface Club {
+  id: string
+  name: string
+  shortName?: string | null
 }
 
 interface ParsedCategory {
@@ -47,17 +60,18 @@ interface ParsedResults {
   slpRankings: AthletePoints[]
 }
 
-// Mock user - in production, this will come from Auth.js session
-const mockUser = {
-  email: 'admin@test.ch',
-  role: 'super_admin' as 'super_admin' | 'club_admin',
+interface Session {
+  role: 'super_admin' | 'admin'
+  clubId?: string
 }
 
 export default function TournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [clubs, setClubs] = useState<Club[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [showImageModal, setShowImageModal] = useState(false)
   const [showResultsModal, setShowResultsModal] = useState(false)
   const [uploadingTournament, setUploadingTournament] = useState<Tournament | null>(null)
   const [parsedResults, setParsedResults] = useState<ParsedResults | null>(null)
@@ -66,29 +80,63 @@ export default function TournamentsPage() {
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null)
   const [sortField, setSortField] = useState<'name' | 'date' | 'location' | 'type' | 'status'>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [session, setSession] = useState<Session | null>(null)
 
-  const isSuperAdmin = mockUser.role === 'super_admin'
+  const isSuperAdmin = session?.role === 'super_admin'
 
-  // Fetch tournaments from API
+  // Check if user is organizer of a tournament
+  const isOrganizerOf = (tournament: Tournament): boolean => {
+    if (!session?.clubId) return false
+    return tournament.organizers.some(o => o.clubId === session.clubId)
+  }
+
+  // Fetch session from cookie
   useEffect(() => {
-    async function fetchTournaments() {
+    const cookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('admin-session='))
+      ?.split('=')[1]
+
+    if (cookie) {
       try {
-        const response = await fetch('/api/tournaments')
-        if (!response.ok) throw new Error('Failed to fetch tournaments')
-        const data = await response.json()
-        // Transform date strings and map field names
-        setTournaments(data.map((t: { id: string; name: string; date: string; location: string; type: string; status: string; participantCount: number | null; logoUrl: string | null; posterUrl: string | null }) => ({
+        const decoded = JSON.parse(atob(cookie))
+        setSession(decoded)
+      } catch {
+        console.error('Failed to parse session')
+      }
+    }
+  }, [])
+
+  // Fetch tournaments and clubs
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [tournamentsRes, clubsRes] = await Promise.all([
+          fetch('/api/tournaments', { credentials: 'include' }),
+          fetch('/api/clubs', { credentials: 'include' }),
+        ])
+
+        if (!tournamentsRes.ok) throw new Error('Failed to fetch tournaments')
+
+        const tournamentsData = await tournamentsRes.json()
+        setTournaments(tournamentsData.map((t: Tournament & { date: string }) => ({
           ...t,
-          date: t.date.split('T')[0], // Format date as YYYY-MM-DD
+          date: t.date.split('T')[0],
+          organizers: t.organizers || [],
         })))
+
+        if (clubsRes.ok) {
+          const clubsData = await clubsRes.json()
+          setClubs(clubsData)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load tournaments')
-        console.error('Failed to fetch tournaments:', err)
+        console.error('Failed to fetch data:', err)
       } finally {
         setIsLoading(false)
       }
     }
-    fetchTournaments()
+    fetchData()
   }, [])
 
   const [formData, setFormData] = useState({
@@ -97,6 +145,12 @@ export default function TournamentsPage() {
     location: '',
     type: 'national' as Tournament['type'],
     status: 'upcoming' as Tournament['status'],
+    organizerClubIds: [] as string[],
+  })
+
+  const [imageFormData, setImageFormData] = useState({
+    logoUrl: '',
+    posterUrl: '',
   })
 
   const handleSort = (field: typeof sortField) => {
@@ -142,7 +196,7 @@ export default function TournamentsPage() {
 
   const openAddModal = () => {
     setEditingTournament(null)
-    setFormData({ name: '', date: '', location: '', type: 'national', status: 'upcoming' })
+    setFormData({ name: '', date: '', location: '', type: 'national', status: 'upcoming', organizerClubIds: [] })
     setShowModal(true)
   }
 
@@ -154,8 +208,19 @@ export default function TournamentsPage() {
       location: tournament.location,
       type: tournament.type,
       status: tournament.status,
+      organizerClubIds: tournament.organizers.map(o => o.clubId),
     })
     setShowModal(true)
+  }
+
+  // Open image-only edit modal for club admin organizers
+  const openImageModal = (tournament: Tournament) => {
+    setEditingTournament(tournament)
+    setImageFormData({
+      logoUrl: tournament.logoUrl || '',
+      posterUrl: tournament.posterUrl || '',
+    })
+    setShowImageModal(true)
   }
 
   const openResultsModal = (tournament: Tournament) => {
@@ -181,16 +246,15 @@ export default function TournamentsPage() {
       const response = await fetch('/api/tournaments/parse-pdf', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       })
 
       const data = await response.json()
-      console.log('API Response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to parse PDF')
       }
 
-      console.log('Setting parsed results:', data)
       setParsedResults(data)
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Failed to upload PDF')
@@ -203,10 +267,10 @@ export default function TournamentsPage() {
     if (!parsedResults || !uploadingTournament) return
 
     try {
-      // Update tournament status and participant count via API
       const response = await fetch(`/api/tournaments/${uploadingTournament.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           status: 'completed',
           participantCount: parsedResults.totalAthletes,
@@ -219,11 +283,9 @@ export default function TournamentsPage() {
 
       setTournaments(tournaments.map(t =>
         t.id === uploadingTournament.id
-          ? { ...updated, date: updated.date.split('T')[0] }
+          ? { ...updated, date: updated.date.split('T')[0], organizers: updated.organizers || [] }
           : t
       ))
-
-      // TODO: Save parsed results to database (categories, placements)
 
       setShowResultsModal(false)
       setUploadingTournament(null)
@@ -239,29 +301,29 @@ export default function TournamentsPage() {
 
     try {
       if (editingTournament) {
-        // Update existing via API
         const response = await fetch(`/api/tournaments/${editingTournament.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(formData),
         })
         if (!response.ok) throw new Error('Failed to update tournament')
         const updated = await response.json()
         setTournaments(tournaments.map(t =>
           t.id === editingTournament.id
-            ? { ...updated, date: updated.date.split('T')[0] }
+            ? { ...updated, date: updated.date.split('T')[0], organizers: updated.organizers || [] }
             : t
         ))
       } else {
-        // Add new via API
         const response = await fetch('/api/tournaments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(formData),
         })
         if (!response.ok) throw new Error('Failed to create tournament')
         const newTournament = await response.json()
-        setTournaments([...tournaments, { ...newTournament, date: newTournament.date.split('T')[0] }])
+        setTournaments([...tournaments, { ...newTournament, date: newTournament.date.split('T')[0], organizers: newTournament.organizers || [] }])
       }
 
       setShowModal(false)
@@ -272,11 +334,68 @@ export default function TournamentsPage() {
     }
   }
 
+  // Handle image upload for club admin organizers
+  const handleImageUpload = async (file: File, type: 'logo' | 'poster') => {
+    if (!editingTournament) return
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', `tournament-${type}`)
+      formData.append('id', editingTournament.id)
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+
+      if (!uploadRes.ok) throw new Error('Upload failed')
+      const { url } = await uploadRes.json()
+
+      setImageFormData(prev => ({
+        ...prev,
+        [type === 'logo' ? 'logoUrl' : 'posterUrl']: url,
+      }))
+    } catch (err) {
+      console.error('Upload failed:', err)
+      alert('Upload fehlgeschlagen')
+    }
+  }
+
+  const handleImageSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTournament) return
+
+    try {
+      const response = await fetch(`/api/tournaments/${editingTournament.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(imageFormData),
+      })
+      if (!response.ok) throw new Error('Failed to update tournament')
+      const updated = await response.json()
+      setTournaments(tournaments.map(t =>
+        t.id === editingTournament.id
+          ? { ...updated, date: updated.date.split('T')[0], organizers: updated.organizers || [] }
+          : t
+      ))
+
+      setShowImageModal(false)
+      setEditingTournament(null)
+    } catch (err) {
+      console.error('Failed to save images:', err)
+      alert('Fehler beim Speichern')
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (confirm('Turnier wirklich löschen?')) {
       try {
         const response = await fetch(`/api/tournaments/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         })
         if (!response.ok) throw new Error('Failed to delete tournament')
         setTournaments(tournaments.filter(t => t.id !== id))
@@ -285,6 +404,15 @@ export default function TournamentsPage() {
         alert('Fehler beim Löschen des Turniers')
       }
     }
+  }
+
+  const handleOrganizerToggle = (clubId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      organizerClubIds: prev.organizerClubIds.includes(clubId)
+        ? prev.organizerClubIds.filter(id => id !== clubId)
+        : [...prev.organizerClubIds, clubId],
+    }))
   }
 
   return (
@@ -312,7 +440,7 @@ export default function TournamentsPage() {
       {/* Read-only notice for club admins */}
       {!isSuperAdmin && (
         <div className="mb-6 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm text-blue-400">
-          Du hast nur Lesezugriff auf die Turnierübersicht. Nur Super Admins können Turniere bearbeiten.
+          Als Club-Admin kannst du nur Logo und Poster für Turniere hochladen, bei denen dein Club als Organisator eingetragen ist.
         </div>
       )}
 
@@ -333,6 +461,7 @@ export default function TournamentsPage() {
               <th className="py-3 px-4 cursor-pointer hover:text-white" onClick={() => handleSort('type')}>
                 Typ<SortIcon field="type" />
               </th>
+              <th className="py-3 px-4">Organisator</th>
               <th className="py-3 px-4 cursor-pointer hover:text-white" onClick={() => handleSort('status')}>
                 Status<SortIcon field="status" />
               </th>
@@ -340,76 +469,104 @@ export default function TournamentsPage() {
             </tr>
           </thead>
           <tbody>
-            {sortedTournaments.map(tournament => (
-              <tr key={tournament.id} className="border-t border-dark-600 hover:bg-dark-600/30">
-                <td className="py-3 px-4 font-medium">{tournament.name}</td>
-                <td className="py-3 px-4 text-gray-400">
-                  {new Date(tournament.date).toLocaleDateString('de-CH')}
-                </td>
-                <td className="py-3 px-4 text-gray-400">{tournament.location}</td>
-                <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded text-sm capitalize ${
-                    tournament.type === 'national' ? 'bg-blue-500/20 text-blue-400' :
-                    tournament.type === 'international' ? 'bg-purple-500/20 text-purple-400' :
-                    tournament.type === 'em' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-gold/20 text-gold'
-                  }`}>
-                    {tournament.type === 'em' ? 'EM' : tournament.type === 'wm' ? 'WM' : tournament.type}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded text-sm ${
-                    tournament.status === 'completed'
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-orange-500/20 text-orange-400'
-                  }`}>
-                    {tournament.status === 'completed' ? 'Abgeschlossen' : 'Bevorstehend'}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  {isSuperAdmin ? (
+            {sortedTournaments.map(tournament => {
+              const canEdit = isSuperAdmin || isOrganizerOf(tournament)
+              return (
+                <tr key={tournament.id} className="border-t border-dark-600 hover:bg-dark-600/30">
+                  <td className="py-3 px-4 font-medium">{tournament.name}</td>
+                  <td className="py-3 px-4 text-gray-400">
+                    {new Date(tournament.date).toLocaleDateString('de-CH')}
+                  </td>
+                  <td className="py-3 px-4 text-gray-400">{tournament.location}</td>
+                  <td className="py-3 px-4">
+                    <span className={`px-2 py-1 rounded text-sm capitalize ${
+                      tournament.type === 'national' ? 'bg-blue-500/20 text-blue-400' :
+                      tournament.type === 'international' ? 'bg-purple-500/20 text-purple-400' :
+                      tournament.type === 'em' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-gold/20 text-gold'
+                    }`}>
+                      {tournament.type === 'em' ? 'EM' : tournament.type === 'wm' ? 'WM' : tournament.type}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    {tournament.organizers.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {tournament.organizers.map(o => (
+                          <span key={o.clubId} className="px-2 py-0.5 bg-dark-600 text-gray-300 rounded text-xs">
+                            {o.clubShortName || o.clubName}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 text-sm">-</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`px-2 py-1 rounded text-sm ${
+                      tournament.status === 'completed'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-orange-500/20 text-orange-400'
+                    }`}>
+                      {tournament.status === 'completed' ? 'Abgeschlossen' : 'Bevorstehend'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
                     <div className="flex gap-2">
-                      {tournament.status === 'completed' && (
-                        <Link
-                          href={`/admin/tournaments/${tournament.id}/verify`}
-                          className="px-3 py-1 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded text-sm transition-colors"
-                        >
-                          Verifizieren
-                        </Link>
+                      {isSuperAdmin && (
+                        <>
+                          {tournament.status === 'completed' && (
+                            <Link
+                              href={`/admin/tournaments/${tournament.id}/verify`}
+                              className="px-3 py-1 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded text-sm transition-colors"
+                            >
+                              Verifizieren
+                            </Link>
+                          )}
+                          {tournament.status === 'upcoming' && (
+                            <button
+                              onClick={() => openResultsModal(tournament)}
+                              className="px-3 py-1 bg-primary/20 text-primary hover:bg-primary/30 rounded text-sm transition-colors"
+                            >
+                              Resultate hochladen
+                            </button>
+                          )}
+                          <button
+                            onClick={() => openEditModal(tournament)}
+                            className="p-2 text-gray-400 hover:text-white hover:bg-dark-600 rounded transition-colors"
+                            title="Bearbeiten"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(tournament.id)}
+                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-dark-600 rounded transition-colors"
+                            title="Löschen"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </>
                       )}
-                      {tournament.status === 'upcoming' && (
+                      {!isSuperAdmin && canEdit && (
                         <button
-                          onClick={() => openResultsModal(tournament)}
+                          onClick={() => openImageModal(tournament)}
                           className="px-3 py-1 bg-primary/20 text-primary hover:bg-primary/30 rounded text-sm transition-colors"
+                          title="Logo/Poster hochladen"
                         >
-                          Resultate hochladen
+                          Bilder
                         </button>
                       )}
-                      <button
-                        onClick={() => openEditModal(tournament)}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-dark-600 rounded transition-colors"
-                        title="Bearbeiten"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(tournament.id)}
-                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-dark-600 rounded transition-colors"
-                        title="Löschen"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      {!isSuperAdmin && !canEdit && (
+                        <span className="text-gray-500 text-sm">-</span>
+                      )}
                     </div>
-                  ) : (
-                    <span className="text-gray-500 text-sm">-</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
         {isLoading && (
@@ -440,10 +597,10 @@ export default function TournamentsPage() {
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
-      {showModal && (
+      {/* Add/Edit Modal (Super Admin only) */}
+      {showModal && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-xl border border-primary/20 p-6 w-full max-w-md">
+          <div className="bg-dark-800 rounded-xl border border-primary/20 p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">
               {editingTournament ? 'Turnier bearbeiten' : 'Turnier hinzufügen'}
             </h2>
@@ -506,22 +663,21 @@ export default function TournamentsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Turnier-Logo</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:cursor-pointer"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Kleines Logo für Listen und Übersichten</p>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Turnier-Poster</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:cursor-pointer"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Grosses Plakat/Flyer für die Turnierseite</p>
+                  <label className="block text-sm text-gray-400 mb-1">Organisator-Clubs</label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto border border-dark-500 rounded-lg p-2">
+                    {clubs.map(club => (
+                      <label key={club.id} className="flex items-center gap-2 cursor-pointer hover:bg-dark-600 p-1 rounded">
+                        <input
+                          type="checkbox"
+                          checked={formData.organizerClubIds.includes(club.id)}
+                          onChange={() => handleOrganizerToggle(club.id)}
+                          className="rounded border-dark-500 bg-dark-700 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm">{club.shortName || club.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Diese Clubs können Logo und Poster hochladen</p>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -537,6 +693,69 @@ export default function TournamentsPage() {
                   className="flex-1 px-4 py-2 bg-primary hover:bg-primary-light text-white rounded-lg transition-colors"
                 >
                   {editingTournament ? 'Speichern' : 'Hinzufügen'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Image Upload Modal (for club admin organizers) */}
+      {showImageModal && editingTournament && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-800 rounded-xl border border-primary/20 p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">
+              Logo & Poster hochladen
+            </h2>
+            <p className="text-gray-400 text-sm mb-4">{editingTournament.name}</p>
+            <form onSubmit={handleImageSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Turnier-Logo</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleImageUpload(file, 'logo')
+                    }}
+                    className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Kleines Logo für Listen und Übersichten</p>
+                  {imageFormData.logoUrl && (
+                    <div className="mt-2 text-xs text-green-400">Logo hochgeladen</div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Turnier-Poster</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleImageUpload(file, 'poster')
+                    }}
+                    className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Grosses Plakat/Flyer für die Turnierseite</p>
+                  {imageFormData.posterUrl && (
+                    <div className="mt-2 text-xs text-green-400">Poster hochgeladen</div>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowImageModal(false)}
+                  className="flex-1 px-4 py-2 bg-dark-600 hover:bg-dark-500 text-white rounded-lg transition-colors"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary-light text-white rounded-lg transition-colors"
+                >
+                  Speichern
                 </button>
               </div>
             </form>
