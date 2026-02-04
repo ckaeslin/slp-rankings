@@ -326,6 +326,7 @@ export default function MembersPage() {
               <th className="py-3 px-4 cursor-pointer hover:text-white" onClick={() => handleSort('gender')}>
                 {t(lang, 'category')}<SortIcon field="gender" />
               </th>
+              <th className="py-3 px-4">{t(lang, 'birthDate')}</th>
               <th className="py-3 px-4">{t(lang, 'actions')}</th>
             </tr>
           </thead>
@@ -362,6 +363,9 @@ export default function MembersPage() {
                     }`}>
                       {member.gender === 'men' ? t(lang, 'men') : t(lang, 'women')}
                     </span>
+                  </td>
+                  <td className="py-3 px-4 text-gray-400">
+                    {member.birthDate ? new Date(member.birthDate).toLocaleDateString('de-CH') : '-'}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex gap-2">
