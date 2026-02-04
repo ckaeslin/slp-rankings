@@ -37,6 +37,7 @@ export const members = pgTable('members', {
   firstName: varchar('first_name', { length: 100 }).notNull(),
   lastName: varchar('last_name', { length: 100 }).notNull(),
   gender: genderEnum('gender').notNull(),
+  birthDate: timestamp('birth_date'), // Date of birth
   clubId: uuid('club_id').references(() => clubs.id),
   country: varchar('country', { length: 100 }).default('Switzerland'),
   imageUrl: text('image_url'), // Profile picture URL

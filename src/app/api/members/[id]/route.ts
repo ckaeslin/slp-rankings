@@ -49,6 +49,7 @@ export async function PUT(
         firstName: body.firstName,
         lastName: body.lastName,
         gender: body.gender,
+        birthDate: body.birthDate ? new Date(body.birthDate) : null,
         clubId,
         imageUrl: body.imageUrl,
         updatedAt: new Date(),

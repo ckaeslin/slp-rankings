@@ -12,6 +12,7 @@ interface Member {
   firstName: string
   lastName: string
   gender: 'men' | 'women'
+  birthDate: string | null
   country: string | null
   isActive: boolean | null
   imageUrl: string | null
@@ -44,7 +45,7 @@ export default function MembersPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [showModal, setShowModal] = useState(false)
   const [editingMember, setEditingMember] = useState<Member | null>(null)
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', clubId: '', gender: 'men' as 'men' | 'women' })
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', clubId: '', gender: 'men' as 'men' | 'women', birthDate: '' })
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
 
@@ -146,6 +147,7 @@ export default function MembersPage() {
       // Club admins: pre-set their club, super admins: empty
       clubId: userClubId || '',
       gender: 'men',
+      birthDate: '',
     })
     setShowModal(true)
   }
@@ -157,6 +159,7 @@ export default function MembersPage() {
       lastName: member.lastName,
       clubId: member.clubId || '',
       gender: member.gender,
+      birthDate: member.birthDate ? member.birthDate.split('T')[0] : '',
     })
     setShowModal(true)
   }
@@ -439,6 +442,16 @@ export default function MembersPage() {
                     required
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">{t(lang, 'birthDate')}</label>
+                  <input
+                    type="date"
+                    value={formData.birthDate}
+                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                     className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary"
                   />
                 </div>
