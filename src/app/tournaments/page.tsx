@@ -123,7 +123,7 @@ export default function TournamentsPage() {
         const response = await fetch('/api/tournaments')
         if (!response.ok) throw new Error('Failed to fetch tournaments')
         const data = await response.json()
-        setTournaments(data.map((tournament: { id: string; name: string; date: string; location: string; type: string; status: string; participantCount: number | null }) => ({
+        setTournaments(data.map((tournament: { id: string; name: string; date: string; location: string; type: string; status: string; participantCount: number | null; logoUrl: string | null; posterUrl: string | null }) => ({
           ...tournament,
           date: tournament.date.split('T')[0],
         })))
