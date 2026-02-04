@@ -30,80 +30,94 @@ function TournamentCard({ tournament, lang, onViewPoster }: { tournament: Tourna
 
   return (
     <div
-      className={`p-6 rounded-xl border transition-all hover:scale-[1.02] ${
+      className={`rounded-xl border transition-all hover:scale-[1.02] overflow-hidden ${
         isUpcoming
           ? 'bg-dark-700/50 border-primary/30 hover:border-primary/60'
           : 'bg-dark-800/50 border-dark-600'
       }`}
     >
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex items-center gap-3">
-          {tournament.logoUrl && (
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-dark-600 flex-shrink-0">
-              <Image
-                src={tournament.logoUrl}
-                alt={tournament.name}
-                width={48}
-                height={48}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-          <div>
-            <h3 className="text-xl font-semibold">{tournament.name}</h3>
-            <p className="text-gray-400">{tournament.location}</p>
-          </div>
-        </div>
-        <span
-          className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${
-            isUpcoming
-              ? 'bg-primary/20 text-primary'
-              : 'bg-dark-600 text-gray-400'
-          }`}
+      {/* Poster Preview */}
+      {tournament.posterUrl && onViewPoster && (
+        <button
+          onClick={() => onViewPoster(tournament.posterUrl!)}
+          className="w-full h-48 relative overflow-hidden group"
         >
-          {isUpcoming ? t(lang, 'upcoming') : t(lang, 'completed')}
-        </span>
-      </div>
-
-      <div className="flex justify-between items-center">
-        <div className="text-gray-300">
-          <span className="text-sm text-gray-500">{t(lang, 'date')}:</span>
-          <br />
-          {formattedDate}
-        </div>
-        <div className="text-right">
-          <span className="text-sm text-gray-500">{t(lang, 'type')}:</span>
-          <br />
-          <span className="capitalize">{tournament.type}</span>
-        </div>
-      </div>
-
-      {tournament.participantCount && (
-        <div className="mt-3 pt-3 border-t border-dark-600">
-          <span className="text-sm text-gray-500">{t(lang, 'participants')}: </span>
-          <span className="text-primary font-semibold">{tournament.participantCount}</span>
-        </div>
+          <Image
+            src={tournament.posterUrl}
+            alt={`${tournament.name} Poster`}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <span className="text-white text-sm font-medium flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+              </svg>
+              {t(lang, 'viewPoster')}
+            </span>
+          </div>
+        </button>
       )}
 
-      <div className="mt-3 pt-3 border-t border-dark-600 flex items-center justify-between">
-        {tournament.posterUrl && onViewPoster && (
-          <button
-            onClick={() => onViewPoster(tournament.posterUrl!)}
-            className="text-primary hover:text-primary-light text-sm flex items-center gap-1"
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3">
+            {tournament.logoUrl && (
+              <div className="w-12 h-12 rounded-lg overflow-hidden bg-dark-600 flex-shrink-0">
+                <Image
+                  src={tournament.logoUrl}
+                  alt={tournament.name}
+                  width={48}
+                  height={48}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+            <div>
+              <h3 className="text-xl font-semibold">{tournament.name}</h3>
+              <p className="text-gray-400">{tournament.location}</p>
+            </div>
+          </div>
+          <span
+            className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${
+              isUpcoming
+                ? 'bg-primary/20 text-primary'
+                : 'bg-dark-600 text-gray-400'
+            }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            {t(lang, 'viewPoster')}
-          </button>
+            {isUpcoming ? t(lang, 'upcoming') : t(lang, 'completed')}
+          </span>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <div className="text-gray-300">
+            <span className="text-sm text-gray-500">{t(lang, 'date')}:</span>
+            <br />
+            {formattedDate}
+          </div>
+          <div className="text-right">
+            <span className="text-sm text-gray-500">{t(lang, 'type')}:</span>
+            <br />
+            <span className="capitalize">{tournament.type}</span>
+          </div>
+        </div>
+
+        {tournament.participantCount && (
+          <div className="mt-3 pt-3 border-t border-dark-600">
+            <span className="text-sm text-gray-500">{t(lang, 'participants')}: </span>
+            <span className="text-primary font-semibold">{tournament.participantCount}</span>
+          </div>
         )}
+
         {!isUpcoming && (
-          <Link
-            href={`/rankings`}
-            className="text-primary hover:text-primary-light text-sm ml-auto"
-          >
-            {t(lang, 'viewRankings')} →
-          </Link>
+          <div className="mt-3 pt-3 border-t border-dark-600">
+            <Link
+              href={`/rankings`}
+              className="text-primary hover:text-primary-light text-sm"
+            >
+              {t(lang, 'viewRankings')} →
+            </Link>
+          </div>
         )}
       </div>
     </div>
