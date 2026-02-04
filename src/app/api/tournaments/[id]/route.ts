@@ -204,6 +204,60 @@ export async function PUT(
       .where(eq(tournaments.id, id))
       .returning()
 
+    // If categories are provided, save them to the database
+    if (body.categories && Array.isArray(body.categories)) {
+      // First, delete existing categories and results for this tournament
+      const existingCategories = await db
+        .select({ id: tournamentCategories.id })
+        .from(tournamentCategories)
+        .where(eq(tournamentCategories.tournamentId, id))
+
+      // Delete existing results
+      for (const cat of existingCategories) {
+        await db.delete(tournamentResults).where(eq(tournamentResults.categoryId, cat.id))
+      }
+      // Delete existing categories
+      await db.delete(tournamentCategories).where(eq(tournamentCategories.tournamentId, id))
+
+      // Insert new categories and results
+      for (const cat of body.categories) {
+        // Map arm string to enum value
+        const armValue = cat.arm === 'left' || cat.arm === 'Links' ? 'left' : 'right'
+        // Map gender string to enum value
+        const genderValue = cat.gender === 'women' || cat.gender === 'female' || cat.gender.toLowerCase().includes('women') || cat.gender.toLowerCase().includes('female') ? 'women' : 'men'
+        // Map type string to enum value
+        let typeValue: 'senior' | 'junior' | 'master' | 'amateur' = 'senior'
+        const typeLower = (cat.type || '').toLowerCase()
+        if (typeLower.includes('junior')) typeValue = 'junior'
+        else if (typeLower.includes('master')) typeValue = 'master'
+        else if (typeLower.includes('amateur')) typeValue = 'amateur'
+
+        const [newCategory] = await db.insert(tournamentCategories).values({
+          tournamentId: id,
+          name: cat.name,
+          gender: genderValue,
+          arm: armValue,
+          type: typeValue,
+          weightClass: cat.weightClass || null,
+        }).returning()
+
+        // Insert placements/results
+        if (cat.placements && Array.isArray(cat.placements)) {
+          for (const placement of cat.placements) {
+            await db.insert(tournamentResults).values({
+              categoryId: newCategory.id,
+              athleteName: placement.name,
+              country: placement.country || 'Switzerland',
+              position: placement.position,
+              basePoints: 0,
+              bonusPoints: 0,
+              totalPoints: 0,
+            })
+          }
+        }
+      }
+    }
+
     // Get organizers for response
     const organizers = await db
       .select({

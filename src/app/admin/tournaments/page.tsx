@@ -269,6 +269,7 @@ export default function TournamentsPage() {
         body: JSON.stringify({
           status: 'completed',
           participantCount: parsedResults.totalAthletes,
+          categories: parsedResults.categories,
         }),
       })
 
