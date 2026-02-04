@@ -27,12 +27,9 @@ interface Club {
   location: string | null
 }
 
-// Mock user - change role to 'club_admin' and set club to test club admin view
-// In production, this will come from Auth.js session
-const mockUser = {
-  email: 'admin@test.ch',
-  role: 'super_admin' as 'super_admin' | 'club_admin',
-  club: undefined as string | undefined, // Set to a club name for club_admin testing, e.g. 'Armwrestling Zurich'
+interface Session {
+  role: 'super_admin' | 'admin'
+  clubId?: string
 }
 
 export default function MembersPage() {
@@ -49,16 +46,37 @@ export default function MembersPage() {
   const [editingMember, setEditingMember] = useState<Member | null>(null)
   const [formData, setFormData] = useState({ firstName: '', lastName: '', clubId: '', gender: 'men' as 'men' | 'women' })
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [session, setSession] = useState<Session | null>(null)
 
-  const isSuperAdmin = mockUser.role === 'super_admin'
-  const userClub = mockUser.club
+  const isSuperAdmin = session?.role === 'super_admin'
+  const userClubId = session?.clubId
+
+  // Find user's club name for display
+  const userClub = userClubId ? clubs.find(c => c.id === userClubId)?.name : undefined
+
+  // Fetch session from cookie
+  useEffect(() => {
+    const cookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('admin-session='))
+      ?.split('=')[1]
+
+    if (cookie) {
+      try {
+        const decoded = JSON.parse(atob(cookie))
+        setSession(decoded)
+      } catch {
+        console.error('Failed to parse session')
+      }
+    }
+  }, [])
 
   useEffect(() => {
     async function fetchData() {
       try {
         const [membersRes, clubsRes] = await Promise.all([
-          fetch('/api/members'),
-          fetch('/api/clubs')
+          fetch('/api/members', { credentials: 'include' }),
+          fetch('/api/clubs', { credentials: 'include' })
         ])
         if (!membersRes.ok || !clubsRes.ok) throw new Error('Failed to fetch data')
         const [membersData, clubsData] = await Promise.all([
@@ -96,12 +114,9 @@ export default function MembersPage() {
   )
 
   // Filter and sort members based on user role
+  // Note: API already filters by clubId for club admins, this is just for local filtering
   const filteredMembers = members
     .filter(member => {
-      // Club admins can only see their own club's members
-      if (!isSuperAdmin && userClub && member.clubName !== userClub) {
-        return false
-      }
       const fullName = `${member.firstName} ${member.lastName}`.toLowerCase()
       const matchesSearch = fullName.includes(search.toLowerCase())
       const matchesClub = clubFilter === 'all' || member.clubId === clubFilter
@@ -128,7 +143,8 @@ export default function MembersPage() {
     setFormData({
       firstName: '',
       lastName: '',
-      clubId: '',
+      // Club admins: pre-set their club, super admins: empty
+      clubId: userClubId || '',
       gender: 'men',
     })
     setShowModal(true)
@@ -154,22 +170,24 @@ export default function MembersPage() {
         const response = await fetch(`/api/members/${editingMember.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(formData),
         })
         if (!response.ok) throw new Error('Failed to update member')
         // Refetch to get updated data with club info
-        const membersRes = await fetch('/api/members')
+        const membersRes = await fetch('/api/members', { credentials: 'include' })
         if (membersRes.ok) setMembers(await membersRes.json())
       } else {
         // Add new member via API
         const response = await fetch('/api/members', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(formData),
         })
         if (!response.ok) throw new Error('Failed to create member')
         // Refetch to get updated data with club info
-        const membersRes = await fetch('/api/members')
+        const membersRes = await fetch('/api/members', { credentials: 'include' })
         if (membersRes.ok) setMembers(await membersRes.json())
       }
 
@@ -186,6 +204,7 @@ export default function MembersPage() {
       try {
         const response = await fetch(`/api/members/${id}`, {
           method: 'DELETE',
+          credentials: 'include',
         })
         if (!response.ok) throw new Error('Failed to delete member')
         setMembers(members.filter(m => m.id !== id))
@@ -207,6 +226,7 @@ export default function MembersPage() {
 
       const response = await fetch('/api/members/upload', {
         method: 'POST',
+        credentials: 'include',
         body: uploadFormData,
       })
 
@@ -423,19 +443,25 @@ export default function MembersPage() {
                   />
                 </div>
 
-                {/* Club selector */}
+                {/* Club selector - disabled for club admins */}
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">{t(lang, 'club')}</label>
-                  <select
-                    value={formData.clubId}
-                    onChange={(e) => setFormData({ ...formData, clubId: e.target.value })}
-                    className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary"
-                  >
-                    <option value="">{t(lang, 'noClub')}</option>
-                    {clubs.map(club => (
-                      <option key={club.id} value={club.id}>{club.name}</option>
-                    ))}
-                  </select>
+                  {isSuperAdmin ? (
+                    <select
+                      value={formData.clubId}
+                      onChange={(e) => setFormData({ ...formData, clubId: e.target.value })}
+                      className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary"
+                    >
+                      <option value="">{t(lang, 'noClub')}</option>
+                      {clubs.map(club => (
+                        <option key={club.id} value={club.id}>{club.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="w-full px-4 py-2 bg-dark-600 border border-dark-500 rounded-lg text-gray-300 cursor-not-allowed">
+                      {userClub || t(lang, 'yourClub')}
+                    </div>
+                  )}
                 </div>
 
                 <div>
