@@ -20,11 +20,6 @@ export default function AdminPage() {
       .catch(console.error)
   }, [])
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    window.location.href = '/login'
-  }
-
   const stats = standings ? {
     athletes: standings.men.length + standings.women.length,
     clubs: standings.clubs.length,
@@ -33,17 +28,9 @@ export default function AdminPage() {
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">{t(lang, 'dashboard')}</h1>
-          <p className="text-gray-400">{t(lang, 'welcomeBack')}</p>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg transition-colors"
-        >
-          Logout
-        </button>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">{t(lang, 'dashboard')}</h1>
+        <p className="text-gray-400">{t(lang, 'welcomeBack')}</p>
       </div>
 
       {/* Stats */}

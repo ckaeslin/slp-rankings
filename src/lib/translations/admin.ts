@@ -72,6 +72,7 @@ export const translations = {
 
     // Sidebar navigation
     backToWebsite: 'Zuruck zur Website',
+    logout: 'Abmelden',
   },
   en: {
     // Dashboard
@@ -144,6 +145,7 @@ export const translations = {
 
     // Sidebar navigation
     backToWebsite: 'Back to website',
+    logout: 'Logout',
   },
   fr: {
     // Dashboard
@@ -216,6 +218,7 @@ export const translations = {
 
     // Sidebar navigation
     backToWebsite: 'Retour au site',
+    logout: 'Deconnexion',
   },
   it: {
     // Dashboard
@@ -288,6 +291,7 @@ export const translations = {
 
     // Sidebar navigation
     backToWebsite: 'Torna al sito',
+    logout: 'Esci',
   },
 } as const
 

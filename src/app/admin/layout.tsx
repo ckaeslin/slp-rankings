@@ -1,11 +1,19 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useLanguage } from '@/hooks/useLanguage'
 import { t } from '@/lib/translations/admin'
 
 type NavKey = 'dashboard' | 'members' | 'tournaments' | 'clubs' | 'users'
+
+interface Session {
+  email: string
+  role: 'super_admin' | 'admin'
+  clubId?: string
+  clubName?: string
+}
 
 const navItems: { href: string; labelKey: NavKey; icon: string }[] = [
   { href: '/admin', labelKey: 'dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -22,6 +30,28 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname()
   const lang = useLanguage()
+  const [session, setSession] = useState<Session | null>(null)
+
+  useEffect(() => {
+    // Read session from cookie
+    const cookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('admin-session='))
+    if (cookie) {
+      try {
+        const value = cookie.split('=')[1]
+        const decoded = JSON.parse(atob(value))
+        setSession(decoded)
+      } catch {
+        // Invalid cookie
+      }
+    }
+  }, [])
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login'
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -70,9 +100,33 @@ export default function AdminLayout({
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top header */}
+        <header className="h-16 bg-dark-800 border-b border-primary/20 flex items-center justify-end px-6 flex-shrink-0">
+          <div className="flex items-center gap-4">
+            {session && (
+              <span className="text-gray-400 text-sm">
+                {session.email}
+                {session.clubName && (
+                  <span className="ml-2 text-primary">({session.clubName})</span>
+                )}
+              </span>
+            )}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg transition-colors text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              {t(lang, 'logout')}
+            </button>
+          </div>
+        </header>
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
