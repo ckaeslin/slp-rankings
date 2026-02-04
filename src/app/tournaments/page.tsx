@@ -112,10 +112,10 @@ function TournamentCard({ tournament, lang, onViewPoster }: { tournament: Tourna
         {!isUpcoming && (
           <div className="mt-3 pt-3 border-t border-dark-600">
             <Link
-              href={`/rankings`}
+              href={`/tournaments/${tournament.id}`}
               className="text-primary hover:text-primary-light text-sm"
             >
-              {t(lang, 'viewRankings')} →
+              {t(lang, 'viewResults')} →
             </Link>
           </div>
         )}
