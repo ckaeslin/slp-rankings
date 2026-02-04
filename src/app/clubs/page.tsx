@@ -178,7 +178,7 @@ export default function ClubsPage() {
             {t(lang, 'registerClubDesc')}
           </p>
           <a
-            href="mailto:info@swissarmsport.ch"
+            href="mailto:info@swissarmwrestling.ch/"
             className="inline-block px-8 py-3 bg-primary hover:bg-primary-light text-white font-semibold rounded-lg transition-colors"
           >
             {t(lang, 'contact')}

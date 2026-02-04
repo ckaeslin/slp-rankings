@@ -55,20 +55,20 @@ export function Footer() {
             <ul className="space-y-2 text-gray-400">
               <li>
                 <a
-                  href="mailto:info@swissarmsport.ch"
+                  href="mailto:info@swissarmwrestling.ch/"
                   className="hover:text-primary transition-colors"
                 >
-                  info@swissarmsport.ch
+                  info@swissarmwrestling.ch
                 </a>
               </li>
               <li>
                 <a
-                  href="https://swissarmsport.ch"
+                  href="https://swissarmwrestling.ch/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-primary transition-colors"
                 >
-                  swissarmsport.ch
+                  swissarmwrestling.ch
                 </a>
               </li>
             </ul>
