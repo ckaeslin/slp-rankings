@@ -141,6 +141,8 @@ export default function TournamentsPage() {
     type: 'national' as Tournament['type'],
     status: 'upcoming' as Tournament['status'],
     organizerClubIds: [] as string[],
+    logoUrl: '' as string,
+    posterUrl: '' as string,
   })
 
   const [imageFormData, setImageFormData] = useState({
@@ -191,7 +193,7 @@ export default function TournamentsPage() {
 
   const openAddModal = () => {
     setEditingTournament(null)
-    setFormData({ name: '', date: '', location: '', type: 'national', status: 'upcoming', organizerClubIds: [] })
+    setFormData({ name: '', date: '', location: '', type: 'national', status: 'upcoming', organizerClubIds: [], logoUrl: '', posterUrl: '' })
     setShowModal(true)
   }
 
@@ -204,6 +206,8 @@ export default function TournamentsPage() {
       type: tournament.type,
       status: tournament.status,
       organizerClubIds: tournament.organizers.map(o => o.clubId),
+      logoUrl: tournament.logoUrl || '',
+      posterUrl: tournament.posterUrl || '',
     })
     setShowModal(true)
   }
@@ -335,14 +339,14 @@ export default function TournamentsPage() {
     if (!editingTournament) return
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('type', `tournament-${type}`)
-      formData.append('id', editingTournament.id)
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+      uploadFormData.append('type', `tournament-${type}`)
+      uploadFormData.append('id', editingTournament.id)
 
       const uploadRes = await fetch('/api/upload', {
         method: 'POST',
-        body: formData,
+        body: uploadFormData,
         credentials: 'include',
       })
 
@@ -352,6 +356,37 @@ export default function TournamentsPage() {
       }
 
       setImageFormData(prev => ({
+        ...prev,
+        [type === 'logo' ? 'logoUrl' : 'posterUrl']: data.url,
+      }))
+    } catch (err) {
+      console.error('Upload failed:', err)
+      alert(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
+    }
+  }
+
+  // Handle image upload for super admin in main form
+  const handleFormImageUpload = async (file: File, type: 'logo' | 'poster') => {
+    if (!editingTournament) return
+
+    try {
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+      uploadFormData.append('type', `tournament-${type}`)
+      uploadFormData.append('id', editingTournament.id)
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+        credentials: 'include',
+      })
+
+      const data = await uploadRes.json()
+      if (!uploadRes.ok) {
+        throw new Error(data.error || 'Upload failed')
+      }
+
+      setFormData(prev => ({
         ...prev,
         [type === 'logo' ? 'logoUrl' : 'posterUrl']: data.url,
       }))
@@ -677,6 +712,43 @@ export default function TournamentsPage() {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Diese Clubs können Logo und Poster hochladen</p>
                 </div>
+                {/* Image uploads for super admin when editing */}
+                {editingTournament && (
+                  <>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Turnier-Logo</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleFormImageUpload(file, 'logo')
+                        }}
+                        className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:cursor-pointer"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Kleines Logo für Listen und Übersichten</p>
+                      {formData.logoUrl && (
+                        <div className="mt-2 text-xs text-green-400">Logo hochgeladen</div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Turnier-Poster</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleFormImageUpload(file, 'poster')
+                        }}
+                        className="w-full px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-white focus:outline-none focus:border-primary file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:cursor-pointer"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Grosses Plakat/Flyer für die Turnierseite</p>
+                      {formData.posterUrl && (
+                        <div className="mt-2 text-xs text-green-400">Poster hochgeladen</div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex gap-3 mt-6">
                 <button

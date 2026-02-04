@@ -270,6 +270,22 @@ export async function PUT(
       }
     }
 
+    // If organizerClubIds are provided (super_admin only), update organizers
+    if (body.organizerClubIds && Array.isArray(body.organizerClubIds) && session.role === 'super_admin') {
+      // Delete existing organizers
+      await db.delete(tournamentOrganizers).where(eq(tournamentOrganizers.tournamentId, id))
+
+      // Insert new organizers
+      if (body.organizerClubIds.length > 0) {
+        await db.insert(tournamentOrganizers).values(
+          body.organizerClubIds.map((clubId: string) => ({
+            tournamentId: id,
+            clubId,
+          }))
+        )
+      }
+    }
+
     // Get organizers for response
     const organizers = await db
       .select({
