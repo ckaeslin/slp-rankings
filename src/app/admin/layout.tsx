@@ -33,20 +33,15 @@ export default function AdminLayout({
   const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
-    // Read session from cookie
-    const cookie = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('admin-session='))
-    if (cookie) {
-      try {
-        // Use substring to handle base64 values that contain '=' padding
-        const value = cookie.substring('admin-session='.length)
-        const decoded = JSON.parse(atob(value))
-        setSession(decoded)
-      } catch {
-        // Invalid cookie
-      }
-    }
+    // Fetch session from API (cookie is httpOnly so can't read directly)
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          setSession(data.user)
+        }
+      })
+      .catch(console.error)
   }, [])
 
   const handleLogout = async () => {

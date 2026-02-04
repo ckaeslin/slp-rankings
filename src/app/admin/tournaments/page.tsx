@@ -90,22 +90,16 @@ export default function TournamentsPage() {
     return tournament.organizers.some(o => o.clubId === session.clubId)
   }
 
-  // Fetch session from cookie
+  // Fetch session from API (cookie is httpOnly so can't read directly)
   useEffect(() => {
-    const cookie = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('admin-session='))
-
-    if (cookie) {
-      try {
-        // Use substring to handle base64 values that contain '=' padding
-        const value = cookie.substring('admin-session='.length)
-        const decoded = JSON.parse(atob(value))
-        setSession(decoded)
-      } catch {
-        console.error('Failed to parse session')
-      }
-    }
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          setSession(data.user)
+        }
+      })
+      .catch(console.error)
   }, [])
 
   // Fetch tournaments and clubs
