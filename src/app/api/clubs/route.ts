@@ -1,9 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db, clubs } from '@/db'
+import { eq } from 'drizzle-orm'
 
-// GET all clubs
-export async function GET() {
+// Helper to get session from cookie
+function getSession(request: NextRequest) {
+  const cookie = request.cookies.get('admin-session')?.value
+  if (!cookie) return null
   try {
+    return JSON.parse(Buffer.from(cookie, 'base64').toString('utf-8'))
+  } catch {
+    return null
+  }
+}
+
+// GET clubs - club admins only see their own club
+export async function GET(request: NextRequest) {
+  const session = getSession(request)
+
+  try {
+    // Club admins only see their own club
+    if (session && session.role === 'admin' && session.clubId) {
+      const club = await db
+        .select()
+        .from(clubs)
+        .where(eq(clubs.id, session.clubId))
+      return NextResponse.json(club)
+    }
+
+    // Super admins see all clubs
     const allClubs = await db
       .select()
       .from(clubs)
@@ -19,8 +43,13 @@ export async function GET() {
   }
 }
 
-// POST create new club
+// POST create new club - super_admin only
 export async function POST(request: NextRequest) {
+  const session = getSession(request)
+  if (!session || session.role !== 'super_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     const body = await request.json()
 

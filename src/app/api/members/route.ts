@@ -2,10 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, members, clubs } from '@/db'
 import { eq } from 'drizzle-orm'
 
-// GET all members with their club info
-export async function GET() {
+// Helper to get session from cookie
+function getSession(request: NextRequest) {
+  const cookie = request.cookies.get('admin-session')?.value
+  if (!cookie) return null
   try {
-    const allMembers = await db
+    return JSON.parse(Buffer.from(cookie, 'base64').toString('utf-8'))
+  } catch {
+    return null
+  }
+}
+
+// GET members - club admins only see their club members
+export async function GET(request: NextRequest) {
+  const session = getSession(request)
+
+  try {
+    let query = db
       .select({
         id: members.id,
         firstName: members.firstName,
@@ -22,6 +35,12 @@ export async function GET() {
       .leftJoin(clubs, eq(members.clubId, clubs.id))
       .orderBy(members.lastName, members.firstName)
 
+    // Club admins only see their own club's members
+    if (session && session.role === 'admin' && session.clubId) {
+      query = query.where(eq(members.clubId, session.clubId)) as typeof query
+    }
+
+    const allMembers = await query
     return NextResponse.json(allMembers)
   } catch (error) {
     console.error('Failed to fetch members:', error)
@@ -32,16 +51,27 @@ export async function GET() {
   }
 }
 
-// POST create new member
+// POST create new member - club admins can only create for their club
 export async function POST(request: NextRequest) {
+  const session = getSession(request)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
+
+    // Club admins can only create members for their own club
+    let clubId = body.clubId || null
+    if (session.role === 'admin' && session.clubId) {
+      clubId = session.clubId // Force their own club
+    }
 
     const newMember = await db.insert(members).values({
       firstName: body.firstName,
       lastName: body.lastName,
       gender: body.gender,
-      clubId: body.clubId || null,
+      clubId,
       country: body.country || 'Switzerland',
       isActive: body.isActive ?? true,
     }).returning()

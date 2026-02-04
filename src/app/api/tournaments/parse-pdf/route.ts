@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseStandingsPdf, calculateSLPPoints } from '@/lib/parse-standings-pdf'
 
+// Helper to get session from cookie
+function getSession(request: NextRequest) {
+  const cookie = request.cookies.get('admin-session')?.value
+  if (!cookie) return null
+  try {
+    return JSON.parse(Buffer.from(cookie, 'base64').toString('utf-8'))
+  } catch {
+    return null
+  }
+}
+
+// POST parse PDF - super_admin only
 export async function POST(request: NextRequest) {
+  const session = getSession(request)
+  if (!session || session.role !== 'super_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get('pdf') as File | null
