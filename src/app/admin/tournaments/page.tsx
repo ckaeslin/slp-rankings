@@ -346,16 +346,18 @@ export default function TournamentsPage() {
         credentials: 'include',
       })
 
-      if (!uploadRes.ok) throw new Error('Upload failed')
-      const { url } = await uploadRes.json()
+      const data = await uploadRes.json()
+      if (!uploadRes.ok) {
+        throw new Error(data.error || 'Upload failed')
+      }
 
       setImageFormData(prev => ({
         ...prev,
-        [type === 'logo' ? 'logoUrl' : 'posterUrl']: url,
+        [type === 'logo' ? 'logoUrl' : 'posterUrl']: data.url,
       }))
     } catch (err) {
       console.error('Upload failed:', err)
-      alert('Upload fehlgeschlagen')
+      alert(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
     }
   }
 

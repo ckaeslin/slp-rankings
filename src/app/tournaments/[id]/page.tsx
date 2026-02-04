@@ -357,38 +357,36 @@ export default function TournamentResultPage({ params }: { params: Promise<{ id:
                           <span className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm mr-4 flex-shrink-0 ${getMedalStyle(result.position)}`}>
                             {result.position}
                           </span>
+                          {result.memberImageUrl && (
+                            <div className="relative group/pic mr-3 flex-shrink-0">
+                              <Image
+                                src={result.memberImageUrl}
+                                alt={displayName}
+                                width={28}
+                                height={28}
+                                className="rounded-full object-cover bg-dark-600 shadow-sm transition-all duration-300 group-hover/pic:scale-150 group-hover/pic:z-50"
+                              />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <span className={`text-gray-200 block ${result.position <= 3 ? 'font-semibold' : ''}`}>
                               {displayName}
                             </span>
-                            {result.clubName && (
-                              <span className="text-primary text-sm">{result.clubName}</span>
+                            {(result.clubShortName || result.clubName) && (
+                              <span className="text-gray-500 text-xs">{result.clubShortName || result.clubName}</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {result.memberImageUrl && (
-                              <div className="relative group/pic">
-                                <Image
-                                  src={result.memberImageUrl}
-                                  alt={displayName}
-                                  width={40}
-                                  height={40}
-                                  className="rounded-full object-cover bg-dark-600 p-0.5 shadow-sm transition-all duration-300 group-hover/pic:scale-150 group-hover/pic:z-50"
-                                />
-                              </div>
-                            )}
-                            {result.clubLogoUrl && (
-                              <div className="relative group/logo">
-                                <Image
-                                  src={result.clubLogoUrl}
-                                  alt={result.clubName || ''}
-                                  width={40}
-                                  height={40}
-                                  className="rounded-full object-cover bg-dark-600 p-1 shadow-sm transition-all duration-300 group-hover/logo:scale-150 group-hover/logo:z-50"
-                                />
-                              </div>
-                            )}
-                          </div>
+                          {result.clubLogoUrl && (
+                            <div className="relative group/logo flex-shrink-0">
+                              <Image
+                                src={result.clubLogoUrl}
+                                alt={result.clubName || ''}
+                                width={24}
+                                height={24}
+                                className="rounded-full object-contain bg-dark-600 p-0.5 opacity-60 transition-all duration-300 group-hover/logo:opacity-100 group-hover/logo:scale-150 group-hover/logo:z-50"
+                              />
+                            </div>
+                          )}
                         </div>
                       )
                     })}

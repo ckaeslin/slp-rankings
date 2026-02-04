@@ -32,21 +32,23 @@ export async function POST(request: NextRequest) {
     const isPdf = file.type === 'application/pdf'
     const isImage = file.type.startsWith('image/')
 
+    console.log('Upload request:', { type, fileType: file.type, fileSize: file.size, fileName: file.name })
+
     if (type === 'tournament-pdf') {
       if (!isPdf) {
-        return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 })
+        return NextResponse.json({ error: `File must be a PDF (got: ${file.type})` }, { status: 400 })
       }
       // Max 10MB for PDFs
       if (file.size > 10 * 1024 * 1024) {
-        return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
+        return NextResponse.json({ error: `File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 10MB)` }, { status: 400 })
       }
     } else {
       if (!isImage) {
-        return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
+        return NextResponse.json({ error: `File must be an image (got: ${file.type})` }, { status: 400 })
       }
       // Max 2MB for images
       if (file.size > 2 * 1024 * 1024) {
-        return NextResponse.json({ error: 'File too large (max 2MB)' }, { status: 400 })
+        return NextResponse.json({ error: `File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 2MB)` }, { status: 400 })
       }
     }
 
